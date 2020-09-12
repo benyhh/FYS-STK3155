@@ -12,47 +12,51 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score, mean_squared_log_error, mean_absolute_error
 
-
-# Make data.
-x = np.arange(0, 1, 0.05)
-y = np.arange(0, 1, 0.05)
-x, y = np.meshgrid(x,y)
-
 class reg():
     def __init__(self, n):
         x = np.arange(0, 1, 0.05)
         y = np.arange(0, 1, 0.05)
         self.x, self.y = np.meshgrid(x,y)
 
-        #Parameters
+        # Parameters
         self.n = n
         self.N = np.size(self.x)
         self.p = int((n+1)*(n+2)/2)
 
-        #Makes design matrix and z
+        # Makes design matrix and z
         self.X = self.X_design(self.x,self.y,self.n)
         self.z = self.FrankeFunction(self.x, self.y)
-        self.zfit = self.OLS(self.X, self.z)
 
-        self.MSE = self.mean_squared_error(self.z,self.zfit)
-        self.R2 = self.R_squared(self.z,self.zfit)
+        # Split the data in test and training data
+        X_train, X_test, self.ztrain, self.ztest = train_test_split(self.X, self.z.ravel(), test_size=0.2)
+
+        # Make beta with train data
+        self.beta = self.beta(X_train, self.ztrain)
+
+        # Make prediction
+        self.ztilde = X_train @ self.beta
+        self.zpredict = X_test @ self.beta
+
+        #self.MSE = self.mean_squared_error(self.z,self.zfit)
+        #self.R2 = self.R_squared(self.z,self.zfit)
 
     def __call__(self):
         pass
 
     def print_data(self):
+        MSEtrain = self.mean_squared_error(self.ztrain, self.ztilde)
+        MSEtest = self.mean_squared_error(self.ztest, self.zpredict)
+        R2train = self.R_squared(self.ztrain, self.ztilde)
+        R2test = self.R_squared(self.ztest, self.zpredict)
         print("Polynomial degree %i:\n\
-        MSE: %.5f\n\
-        R2:  %.5f" %(self.n, self.MSE, self.R2))
+        Training MSE: %.5f , Test MSE: %.5f \n\
+        Training R2:  %.5f , Test R2: %.5f" %(self.n, MSEtrain, MSEtest, R2train, R2test))
 
-
-    def OLS(self, X, z):
+    def beta(self, X, z):
         X, z = self.X, self.z
         beta = np.linalg.inv(X.T @ X) @ X.T @ z.ravel()
-        zfit = X @ beta
-        zfit = zfit.reshape(np.shape(z))
 
-        return zfit
+        return beta
 
     def FrankeFunction(self, x, y):
         term1 = 0.75*np.exp(-(0.25*(9*x-2)**2) - 0.25*((9*y-2)**2))
@@ -87,19 +91,19 @@ class reg():
         fig.colorbar(surf, shrink=0.5, aspect=5)
         plt.show()
 
-    def mean_squared_error(self, z,z_fit):
-        n = np.size(z)
-        MSE = (z-z_fit)**2
+    def mean_squared_error(self, z1,z2):
+        n = np.size(z1)
+        MSE = (z1-z2)**2
         return np.mean(MSE)
 
-    def R_squared(self, z,z_fit):
-        z_mean = np.mean(z)
-        SStot = (z-z_mean)**2
-        SSres = (z-z_fit)**2
-
-        R_sq = 1 - np.sum(SSres)/np.sum(SStot)
-        return R_sq
+    def R_squared(self, z,zfit):
+        zmean = np.mean(z)
+        SStot = (z-zmean)**2
+        SSres = (z-zfit)**2
+        R2 = 1 - np.sum(SSres)/np.sum(SStot)
+        return R2
 
 objects = np.array([reg(i) for i in range(2,6)])
+
 for ob in objects:
     ob.print_data()
