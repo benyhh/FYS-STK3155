@@ -20,20 +20,39 @@ x, y = np.meshgrid(x,y)
 
 class reg():
     def __init__(self, n):
-        self.n = n
         x = np.arange(0, 1, 0.05)
         y = np.arange(0, 1, 0.05)
         self.x, self.y = np.meshgrid(x,y)
-        self.z = self.FrankeFunction(self.x, self.y)
-        self.N = np.size(x)
-        self.p = int((n+1)*(n+2)/2)
-        self.X = self.X_design(x,y,n)
 
-        beta = np.linalg.inv(self.X.T @ self.X) @ self.X.T @ self.z.ravel()
-        z_fit = self.X @ self.beta
-        z_fit = z_fit.reshape(np.shape(z))
-        plot_surf(x,y,z)
-        plot_surf(x,y, z_fit)
+        #Parameters
+        self.n = n
+        self.N = np.size(self.x)
+        self.p = int((n+1)*(n+2)/2)
+
+        #Makes design matrix and z
+        self.X = self.X_design(self.x,self.y,self.n)
+        self.z = self.FrankeFunction(self.x, self.y)
+        self.zfit = self.OLS(self.X, self.z)
+
+        self.MSE = self.mean_squared_error(self.z,self.zfit)
+        self.R2 = self.R_squared(self.z,self.zfit)
+
+    def __call__(self):
+        pass
+
+    def print_data(self):
+        print("Polynomial degree %i:\n\
+        MSE: %.5f\n\
+        R2:  %.5f" %(self.n, self.MSE, self.R2))
+
+
+    def OLS(self, X, z):
+        X, z = self.X, self.z
+        beta = np.linalg.inv(X.T @ X) @ X.T @ z.ravel()
+        zfit = X @ beta
+        zfit = zfit.reshape(np.shape(z))
+
+        return zfit
 
     def FrankeFunction(self, x, y):
         term1 = 0.75*np.exp(-(0.25*(9*x-2)**2) - 0.25*((9*y-2)**2))
@@ -68,7 +87,6 @@ class reg():
         fig.colorbar(surf, shrink=0.5, aspect=5)
         plt.show()
 
-
     def mean_squared_error(self, z,z_fit):
         n = np.size(z)
         MSE = (z-z_fit)**2
@@ -82,8 +100,6 @@ class reg():
         R_sq = 1 - np.sum(SSres)/np.sum(SStot)
         return R_sq
 
-deg5 = reg(5)
-
-
-R2 = R_squared(z,z_fit)
-MSE = mean_squared_error(z,z_fit)
+objects = np.array([reg(i) for i in range(2,6)])
+for ob in objects:
+    ob.print_data()
