@@ -40,6 +40,21 @@ class reg():
         #self.MSE = self.mean_squared_error(self.z,self.zfit)
         #self.R2 = self.R_squared(self.z,self.zfit)
 
+    def comp(self, X, beta, scale=True):
+        """
+        Funksjon som regner z med gitt X, beta og scaling.
+        Så finner den MSE og R2.
+        (Men må kunne sammenlikne shit også kanskje?
+        Eller kan jo faktisk bare calle flere ganger.)
+
+        if scale == True:
+            scaler = StandardScaler()
+        scaler.fit(X)
+        X_scaled = scaler.transform(X)
+
+        z = X @ beta
+        """
+
     def __call__(self):
         pass
 
