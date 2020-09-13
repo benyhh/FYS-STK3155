@@ -23,55 +23,49 @@ class reg():
         self.N = np.size(self.x)
         self.p = int((n+1)*(n+2)/2)
 
-        # Makes design matrix and z
+        # Makes design matrix and z with added noise
         self.X = self.X_design(self.x,self.y,self.n)
-        self.z = self.FrankeFunction(self.x, self.y)
+        noise = 0.1 * np.random.randn(np.size(self.x)).reshape(len(x),len(x))
+        self.z = self.FrankeFunction(self.x, self.y) + noise
 
-        # Split the data in test and training data
-        X_train, X_test, self.ztrain, self.ztest = train_test_split(self.X, self.z.ravel(), test_size=0.2)
+    def comp(self, scale=True, print=True):
 
-        # Make beta with train data
-        self.beta = self.beta(X_train, self.ztrain)
-
-        # Make prediction
-        self.ztilde = X_train @ self.beta
-        self.zpredict = X_test @ self.beta
-
-        #self.MSE = self.mean_squared_error(self.z,self.zfit)
-        #self.R2 = self.R_squared(self.z,self.zfit)
-
-    def comp(self, X, beta, scale=True):
-        """
-        Funksjon som regner z med gitt X, beta og scaling.
-        Så finner den MSE og R2.
-        (Men må kunne sammenlikne shit også kanskje?
-        Eller kan jo faktisk bare calle flere ganger.)
-
+        X_train, X_test, ztrain, ztest = train_test_split(self.X, self.z.ravel(), test_size=0.2)
         if scale == True:
-            scaler = StandardScaler()
-        scaler.fit(X)
-        X_scaled = scaler.transform(X)
+            X_train -= np.mean(X_train)
+            X_test -= np.mean(X_test)
 
-        z = X @ beta
-        """
+        var_Xtrain = self.variance(X_train)
+        var_Xtest = self.variance(X_test)
 
-    def __call__(self):
-        pass
+        beta = self.calc_beta(X_train, ztrain)
+        ztilde = X_train @ beta
+        zpredict = X_test @ beta
 
-    def print_data(self):
-        MSEtrain = self.mean_squared_error(self.ztrain, self.ztilde)
-        MSEtest = self.mean_squared_error(self.ztest, self.zpredict)
-        R2train = self.R_squared(self.ztrain, self.ztilde)
-        R2test = self.R_squared(self.ztest, self.zpredict)
-        print("Polynomial degree %i:\n\
-        Training MSE: %.5f , Test MSE: %.5f \n\
-        Training R2:  %.5f , Test R2: %.5f" %(self.n, MSEtrain, MSEtest, R2train, R2test))
+        if print == True:
+            self.print_data(ztrain, ztest, ztilde, zpredict, scale)
 
-    def beta(self, X, z):
+
+    def calc_beta(self, X, z):
         X, z = self.X, self.z
         beta = np.linalg.inv(X.T @ X) @ X.T @ z.ravel()
 
         return beta
+
+    def __call__(self):
+        pass
+
+    def print_data(self, ztrain, ztest, ztilde, zpredict, scale):
+
+        MSEtrain = self.mean_squared_error(ztrain, ztilde)
+        MSEtest = self.mean_squared_error(ztest, zpredict)
+        R2train = self.R_squared(ztrain, ztilde)
+        R2test = self.R_squared(ztest, zpredict)
+        #   if scale == True:
+            #print("With Scaling")
+        print("Polynomial degree %i:\n\
+        Training MSE: %.5f , Test MSE: %.5f \n\
+        Training R2:  %.5f , Test R2: %.5f" %(self.n, MSEtrain, MSEtest, R2train, R2test))
 
     def FrankeFunction(self, x, y):
         term1 = 0.75*np.exp(-(0.25*(9*x-2)**2) - 0.25*((9*y-2)**2))
@@ -106,6 +100,9 @@ class reg():
         fig.colorbar(surf, shrink=0.5, aspect=5)
         plt.show()
 
+    def variance(self, X):
+        return np.linalg.inv(X.T @ X)
+
     def mean_squared_error(self, z1,z2):
         n = np.size(z1)
         MSE = (z1-z2)**2
@@ -121,4 +118,4 @@ class reg():
 objects = np.array([reg(i) for i in range(2,6)])
 
 for ob in objects:
-    ob.print_data()
+    ob.comp()
