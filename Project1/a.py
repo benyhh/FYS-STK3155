@@ -28,6 +28,36 @@ class reg():
         noise = 0.1 * np.random.randn(np.size(self.x)).reshape(len(x),len(x))
         self.z = self.FrankeFunction(self.x, self.y) + noise
 
+    def test_complexity(self, N):
+        complexity = np.arange(1,22)
+        X = self.X
+
+        MSEtrain = np.zeros((len(complexity), N))
+        MSEtest = np.zeros((len(complexity), N))
+
+        for j in range(N):
+            X_train, X_test, ztrain, ztest = train_test_split(X, self.z.ravel(), test_size=0.2)
+            #Scaling
+            X_train -= np.mean(X_train)
+            X_test -= np.mean(X_test)
+
+            for i in complexity:
+
+                beta, ztilde, zpredict = self.comp2(X_train[:,:i], X_test[:,:i], ztrain, ztest)
+
+                MSEtrain[i-1][j] = self.mean_squared_error(ztrain, ztilde)
+                MSEtest[i-1][j] = self.mean_squared_error(ztest, zpredict)
+
+        plt.plot(complexity,np.mean(MSEtrain,axis=1))
+        plt.show()
+
+    def comp2(self, X_train, X_test, ztrain, ztest):
+        beta = self.calc_beta(X_train, ztrain)
+        print(np.shape(beta),np.shape(X_test))
+        ztilde = X_train @ beta
+        zpredict = X_test @ beta
+        return beta, ztilde, zpredict
+
     def comp(self, scale=True, print=True):
 
         X_train, X_test, ztrain, ztest = train_test_split(self.X, self.z.ravel(), test_size=0.2)
@@ -44,7 +74,6 @@ class reg():
 
         if print == True:
             self.print_data(ztrain, ztest, ztilde, zpredict, scale)
-
 
     def calc_beta(self, X, z):
         X, z = self.X, self.z
@@ -75,14 +104,18 @@ class reg():
         return term1 + term2 + term3 + term4
 
     def X_design(self, x,y,n):
-        X = np.zeros((self.N,self.p))
-        x = x.ravel()
-        y = y.ravel()
-        k = 0
-        for i in range(n+1):
-            for j in range(n+1-i):
-                X[:,k] = x.ravel()**j * y.ravel()**i
-                k += 1
+        if len(x.shape) > 1:
+            x = np.ravel(x)
+            y = np.ravel(y)
+
+        N = len(x)
+        l = int((n+1)*(n+2)/2)          # Number of elements in beta
+        X = np.ones((N,l))
+
+        for i in range(1,n+1):
+                q = int((i)*(i+1)/2)
+                for k in range(i+1):
+                        X[:,q+k] = (x**(i-k))*(y**k)
         return X
 
     def plot_surf(self, x,y,z):
@@ -115,7 +148,7 @@ class reg():
         R2 = 1 - np.sum(SSres)/np.sum(SStot)
         return R2
 
-objects = np.array([reg(i) for i in range(2,6)])
-
-for ob in objects:
-    ob.comp()
+#objects = np.array([reg(i) for i in range(2,6)])
+N = 100
+deg5 = reg(5)
+deg5.test_complexity(N)
