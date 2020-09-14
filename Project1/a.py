@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score, mean_squared_log_error, mean_absolute_error
+np.random.seed(100)
 
 class reg():
     def __init__(self, n):
@@ -25,7 +26,7 @@ class reg():
 
         # Makes design matrix and z with added noise
         self.X = self.X_design(self.x,self.y,self.n)
-        noise = 0.1 * np.random.randn(np.size(self.x)).reshape(len(x),len(x))
+        noise = 0.5 * np.random.randn(np.size(self.x)).reshape(len(x),len(x))
         self.z = self.FrankeFunction(self.x, self.y) + noise
 
     def test_complexity(self, N):
@@ -48,12 +49,17 @@ class reg():
                 MSEtrain[i-1][j] = self.mean_squared_error(ztrain, ztilde)
                 MSEtest[i-1][j] = self.mean_squared_error(ztest, zpredict)
 
-        plt.plot(complexity,np.mean(MSEtrain,axis=1))
+        plt.plot(complexity,np.mean(MSEtrain,axis=1), label = 'Train')
+        plt.plot(complexity,np.mean(MSEtest,axis=1), label = 'Test')
+        plt.legend()
+        plt.title("N = %i, Test Size = %.1f, Noise = %.1f" %(N, 0.2, 0.5))
+        plt.xlabel('Model Complexity')
+        plt.ylabel('MSE')
+        #plt.savefig("MSE_Complexity.PNG",dpi=200)
         plt.show()
 
     def comp2(self, X_train, X_test, ztrain, ztest):
         beta = self.calc_beta(X_train, ztrain)
-        print(np.shape(beta),np.shape(X_test))
         ztilde = X_train @ beta
         zpredict = X_test @ beta
         return beta, ztilde, zpredict
@@ -76,7 +82,6 @@ class reg():
             self.print_data(ztrain, ztest, ztilde, zpredict, scale)
 
     def calc_beta(self, X, z):
-        X, z = self.X, self.z
         beta = np.linalg.inv(X.T @ X) @ X.T @ z.ravel()
 
         return beta
@@ -149,6 +154,6 @@ class reg():
         return R2
 
 #objects = np.array([reg(i) for i in range(2,6)])
-N = 100
+N = 500
 deg5 = reg(5)
 deg5.test_complexity(N)
