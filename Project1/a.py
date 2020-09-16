@@ -14,9 +14,9 @@ from sklearn.metrics import mean_squared_error, r2_score, mean_squared_log_error
 np.random.seed(100)
 
 class reg():
-    def __init__(self, n):
-        x = np.arange(0, 1, 0.05)
-        y = np.arange(0, 1, 0.05)
+    def __init__(self, n,d):
+        x = np.linspace(0,1,d)
+        y = np.linspace(0,1,d)
         self.x, self.y = np.meshgrid(x,y)
 
         # Parameters
@@ -26,8 +26,60 @@ class reg():
 
         # Makes design matrix and z with added noise
         self.X = self.X_design(self.x,self.y,self.n)
-        noise = 0.5 * np.random.randn(np.size(self.x)).reshape(len(x),len(x))
+        noise = 0.01 * np.random.randn(np.size(self.x)).reshape(len(x),len(x))
         self.z = self.FrankeFunction(self.x, self.y) + noise
+
+    def bootstrap(self, N):
+        X = self.X
+        z = self.z.ravel()
+        MSEtrain = np.zeros(N)
+        MSEtest = np.zeros(N)
+
+        for i in range(N):
+            X_train, X_test, z_train, z_test = train_test_split(X, z, test_size=0.2)
+            #Scaling
+            X_train -= np.mean(X_train)
+            X_test -= np.mean(X_test)
+
+            beta, z_tilde, z_predict = self.comp2(X_train, X_test, z_train, z_test)
+
+            MSEtrain[i] = mean_squared_error(z_train, z_tilde)
+            MSEtest[i] = mean_squared_error(z_test, z_predict)
+
+        print("MSE for bootstrap method with N=%i resamples" %(N))
+        print("Train MSE: %2.f \n Test MSE: %.2f" %(np.mean(MSEtrain), np.mean(MSEtest)))
+
+    def k_fold(self, k):
+        X = self.X
+        z = self.z.ravel()
+
+        test_size = int(len(X)/k)
+
+        MSEtrain = np.zeros(k)
+        MSEtest = np.zeros(k)
+        for i in range(k):
+            X_test = X[i*test_size:(i+1)*test_size]
+            z_test = z[i*test_size:(i+1)*test_size]
+            if i == 0:
+                X_train = X[test_size:]
+                z_train = z[test_size:]
+            elif i == k-1:
+                X_train = X[:-test_size]
+                z_train = z[:-test_size]
+            else:
+                X_train = np.concatenate((X[:i*test_size], X[(i+1)*test_size:]))
+                z_train = np.concatenate((z[:i*test_size], z[(i+1)*test_size:]))
+
+            #Scaling
+            X_train -= np.mean(X_train)
+            X_test -= np.mean(X_test)
+
+            beta, z_tilde, z_predict = self.comp2(X_train, X_test, z_train, z_test)
+
+            MSEtrain[i] = mean_squared_error(z_train, z_tilde)
+            MSEtest[i] = mean_squared_error(z_test, z_predict)
+        print("MSE for k-fold method with k=%i" %(k))
+        print("Train MSE: %2.f \n Test MSE: %.2f" %(np.mean(MSEtrain), np.mean(MSEtest)))
 
     def test_complexity(self, N):
         complexity = np.arange(1,22)
@@ -82,12 +134,9 @@ class reg():
             self.print_data(ztrain, ztest, ztilde, zpredict, scale)
 
     def calc_beta(self, X, z):
-        beta = np.linalg.inv(X.T @ X) @ X.T @ z.ravel()
+        beta = np.linalg.pinv(X.T @ X) @ X.T @ z.ravel()
 
         return beta
-
-    def __call__(self):
-        pass
 
     def print_data(self, ztrain, ztest, ztilde, zpredict, scale):
 
@@ -138,8 +187,9 @@ class reg():
         fig.colorbar(surf, shrink=0.5, aspect=5)
         plt.show()
 
-    def variance(self, X):
-        return np.linalg.inv(X.T @ X)
+    def variance(self):
+        X = self.X
+        return np.linalg.diag(X.T @ X)
 
     def mean_squared_error(self, z1,z2):
         n = np.size(z1)
@@ -154,6 +204,13 @@ class reg():
         return R2
 
 #objects = np.array([reg(i) for i in range(2,6)])
-N = 500
-deg5 = reg(5)
+
+d = 20 #Gridpoints
+N = 1000 #Bootstrap samples
+k = 10 #k-fold samples
+deg5 = reg(5,d)
+deg5.k_fold(k)
+deg5.bootstrap(N)
+
 deg5.test_complexity(N)
+#print(deg5.variance())
