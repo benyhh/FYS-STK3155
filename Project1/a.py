@@ -10,6 +10,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
+from sklearn.utils import resample
 from sklearn.metrics import mean_squared_error, r2_score, mean_squared_log_error, mean_absolute_error
 np.random.seed(100)
 
@@ -34,9 +35,9 @@ class reg():
         z = self.z.ravel()
         MSEtrain = np.zeros(N)
         MSEtest = np.zeros(N)
+        X_train, X_test, z_train, z_test = train_test_split(X, z, test_size=0.2)
 
         for i in range(N):
-            X_train, X_test, z_train, z_test = train_test_split(X, z, test_size=0.2)
             #Scaling
             X_train -= np.mean(X_train)
             X_test -= np.mean(X_test)
@@ -84,18 +85,18 @@ class reg():
     def test_complexity(self, N):
         complexity = np.arange(1,22)
         X = self.X
-
+        z = self.z.ravel()
         MSEtrain = np.zeros((len(complexity), N))
         MSEtest = np.zeros((len(complexity), N))
 
         for j in range(N):
-            X_train, X_test, ztrain, ztest = train_test_split(X, self.z.ravel(), test_size=0.2)
+            X_train, X_test, ztrain, ztest = train_test_split(X, z, test_size=0.2)
             #Scaling
-            X_train -= np.mean(X_train)
             X_test -= np.mean(X_test)
 
             for i in complexity:
-
+                X_train, ztrain = resample(X,z)
+                X_train -= np.mean(X_train)
                 beta, ztilde, zpredict = self.comp2(X_train[:,:i], X_test[:,:i], ztrain, ztest)
 
                 MSEtrain[i-1][j] = self.mean_squared_error(ztrain, ztilde)
