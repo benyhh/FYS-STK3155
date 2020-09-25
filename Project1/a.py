@@ -24,40 +24,42 @@ class reg():
         self.n = n
         self.N = np.size(self.x)
         self.p = int((n+1)*(n+2)/2)
-
+        self.testsize = 0.2
         # Makes design matrix and z with added noise
         self.X = self.X_design(self.x,self.y,self.n)
-        noise = 0.01 * np.random.randn(np.size(self.x)).reshape(len(x),len(x))
-        self.z = self.FrankeFunction(self.x, self.y) + noise
+        self.noise = 0.01
+        self.z = self.FrankeFunction(self.x, self.y) + self.noise * np.random.randn(np.size(self.x)).reshape(len(x),len(x))
 
     def bootstrap(self, N):
         X = self.X
         z = self.z.ravel()
-        MSEtrain = np.zeros(N)
-        MSEtest = np.zeros(N)
+        MSE = np.zeros(N)
+        Bias = np.zeros(N)
         X_train, X_test, z_train, z_test = train_test_split(X, z, test_size=0.2)
+        X_test -= np.mean(X_test)
 
         for i in range(N):
             #Scaling
+            X_train, z_train = resample(X_train,z_train)
             X_train -= np.mean(X_train)
-            X_test -= np.mean(X_test)
-
             beta, z_tilde, z_predict = self.comp2(X_train, X_test, z_train, z_test)
 
-            MSEtrain[i] = mean_squared_error(z_train, z_tilde)
-            MSEtest[i] = mean_squared_error(z_test, z_predict)
+            MSE[i] = mean_squared_error(z_test, z_predict)
+            Bias[i] = np.mean((z_test-z_predict)**2)
+
 
         print("MSE for bootstrap method with N=%i resamples" %(N))
-        print("Train MSE: %2.f \n Test MSE: %.2f" %(np.mean(MSEtrain), np.mean(MSEtest)))
+        print("Bias = %.4g | MSE = %.4g" %(np.mean(Bias),np.mean(MSE)))
+        #print("Train MSE: %2.f \n Test MSE: %.2f" %(np.mean(MSEtrain), np.mean(MSEtest)))
 
     def k_fold(self, k):
         X = self.X
         z = self.z.ravel()
 
         test_size = int(len(X)/k)
+        MSE = np.zeros(k)
+        Bias = np.zeros(k)
 
-        MSEtrain = np.zeros(k)
-        MSEtest = np.zeros(k)
         for i in range(k):
             X_test = X[i*test_size:(i+1)*test_size]
             z_test = z[i*test_size:(i+1)*test_size]
@@ -77,35 +79,34 @@ class reg():
 
             beta, z_tilde, z_predict = self.comp2(X_train, X_test, z_train, z_test)
 
-            MSEtrain[i] = mean_squared_error(z_train, z_tilde)
-            MSEtest[i] = mean_squared_error(z_test, z_predict)
+            MSE = mean_squared_error(z_test, z_predict)
+
         print("MSE for k-fold method with k=%i" %(k))
-        print("Train MSE: %2.f \n Test MSE: %.2f" %(np.mean(MSEtrain), np.mean(MSEtest)))
+        print("Bias = %.4g | MSE = %.4g" %(np.mean(Bias),np.mean(MSE)))
+        #print("Train MSE: %2.f \n Test MSE: %.2f" %(np.mean(MSEtrain), np.mean(MSEtest)))
 
     def test_complexity(self, N):
         complexity = np.arange(1,22)
         X = self.X
         z = self.z.ravel()
-        MSEtrain = np.zeros((len(complexity), N))
-        MSEtest = np.zeros((len(complexity), N))
-
+        MSE = np.zeros((len(complexity), N))
+        Bias = np.zeros((len(complexity), N))
         for j in range(N):
-            X_train, X_test, ztrain, ztest = train_test_split(X, z, test_size=0.2)
+            X_train, X_test, z_train, z_test = train_test_split(X, z, test_size=0.2)
             #Scaling
             X_test -= np.mean(X_test)
 
             for i in complexity:
-                X_train, ztrain = resample(X,z)
+                X_train, z_train = resample(X_train,z_train)
                 X_train -= np.mean(X_train)
-                beta, ztilde, zpredict = self.comp2(X_train[:,:i], X_test[:,:i], ztrain, ztest)
+                beta, z_tilde, z_predict = self.comp2(X_train[:,:i], X_test[:,:i], z_train, z_test)
+                MSE[i-1][j] = self.mean_squared_error(z_test, z_predict )
+                Bias[i-1][j] = np.mean((z_predict-z_test)**2)
 
-                MSEtrain[i-1][j] = self.mean_squared_error(ztrain, ztilde)
-                MSEtest[i-1][j] = self.mean_squared_error(ztest, zpredict)
-
-        plt.plot(complexity,np.mean(MSEtrain,axis=1), label = 'Train')
-        plt.plot(complexity,np.mean(MSEtest,axis=1), label = 'Test')
+        plt.plot(complexity, np.mean(MSE,axis=1), label = 'MSE')
+        plt.plot(complexity, np.mean(Bias,axis=1), label = 'Bias')
         plt.legend()
-        plt.title("N = %i, Test Size = %.1f, Noise = %.1f" %(N, 0.2, 0.5))
+        plt.title("N = %i, Test Size = %.2f, Noise = %.2f" %(N, self.testsize, self.noise))
         plt.xlabel('Model Complexity')
         plt.ylabel('MSE')
         #plt.savefig("MSE_Complexity.PNG",dpi=200)
@@ -210,8 +211,7 @@ d = 20 #Gridpoints
 N = 1000 #Bootstrap samples
 k = 10 #k-fold samples
 deg5 = reg(5,d)
-deg5.k_fold(k)
+#deg5.k_fold(k)
 deg5.bootstrap(N)
-
 deg5.test_complexity(N)
 #print(deg5.variance())
